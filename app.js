@@ -44,6 +44,8 @@ const CONTRACT_ABI = [
     "function issueCustomReward(address teacher, uint256 amount, string description)",
     "function approveSubmission(uint256 submissionId)",
     "function rejectSubmission(uint256 submissionId, string reason)",
+    "function revokeReward(uint256 submissionId, string reason)",
+    "function revokeCustomAmount(address teacher, uint256 amount, string reason)",
 
     // View Functions
     "function submissionCounter() view returns (uint256)",
@@ -57,7 +59,8 @@ const CONTRACT_ABI = [
     "event SubmissionApproved(uint256 indexed submissionId, address indexed teacher, uint256 rewardAmount, uint256 timestamp)",
     "event SubmissionRejected(uint256 indexed submissionId, address indexed teacher, string reason, uint256 timestamp)",
     "event RewardIssued(address indexed teacher, uint256 amount, string achievementType, uint256 timestamp)",
-    "event TokensBurned(address indexed user, uint256 amount, string reason)"
+    "event TokensBurned(address indexed user, uint256 amount, string reason)",
+    "event RewardRevoked(uint256 indexed submissionId, address indexed teacher, uint256 amount, string reason, uint256 timestamp)"
 ];
 
 // ===== GLOBAL VARIABLES =====
@@ -103,13 +106,20 @@ function initTabs() {
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTab = btn.dataset.tab;
+            const targetSection = document.getElementById(targetTab);
+
+            // Check if trying to access admin-only section without being owner
+            if (targetSection.dataset.adminOnly === 'true' && !isOwner) {
+                showToast('Access denied. Admin only.', 'error');
+                return;
+            }
 
             // Update active states
             tabBtns.forEach(b => b.classList.remove('active'));
             tabContents.forEach(c => c.classList.remove('active'));
 
             btn.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
+            targetSection.classList.add('active');
         });
     });
 }
@@ -132,7 +142,7 @@ connectWalletBtn.addEventListener('click', connectWallet);
         showLoading();
 
         // 2. Request account access using the detected provider
-        const accounts = await rawProvider.request({
+        await rawProvider.request({
             method: 'eth_requestAccounts'
         });
 
@@ -168,9 +178,9 @@ connectWalletBtn.addEventListener('click', connectWallet);
         // Wait for the network to be ready
         await provider.ready;
         
-        // Get signer with proper account index
-        signer = provider.getSigner(accounts[0]);
-        userAddress = accounts[0];
+        // Get signer without specifying account index (let ethers handle it)
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
 
         // Create contract instance
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -212,9 +222,19 @@ async function handleAccountChange(accounts) {
         walletInfo.classList.add('hidden');
         roleIndicator.classList.add('hidden');
         connectWalletBtn.classList.remove('hidden');
+
+        // Hide admin panel and reset to teacher tab
+        document.getElementById('adminTab').classList.add('hidden');
+        document.getElementById('admin').classList.add('hidden');
+
+        // Switch to teacher tab
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="teacher"]').classList.add('active');
+        document.getElementById('teacher').classList.add('active');
     } else {
-        userAddress = accounts[0];
-        signer = provider.getSigner(accounts[0]);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
         const ownerAddress = await contract.owner();
@@ -248,6 +268,33 @@ async function updateWalletUI() {
         userRoleSpan.textContent = 'Teacher';
         userRoleSpan.className = 'teacher';
     }
+
+    // Update UI based on role (Admin vs Teacher)
+    updateRoleBasedUI();
+}
+
+// ===== ROLE-BASED UI =====
+function updateRoleBasedUI() {
+    const adminTab = document.getElementById('adminTab');
+    const adminSection = document.getElementById('admin');
+
+    if (isOwner) {
+        // Show Admin Panel tab and section for owner
+        adminTab.classList.remove('hidden');
+        adminSection.classList.remove('hidden');
+    } else {
+        // Hide Admin Panel for regular teachers
+        adminTab.classList.add('hidden');
+        adminSection.classList.add('hidden');
+
+        // If currently on admin tab, switch to teacher tab
+        if (adminSection.classList.contains('active')) {
+            adminSection.classList.remove('active');
+            document.getElementById('teacher').classList.add('active');
+            document.querySelector('[data-tab="teacher"]').classList.add('active');
+            adminTab.classList.remove('active');
+        }
+    }
 }
 
 // ===== FORM HANDLERS =====
@@ -266,6 +313,10 @@ function initForms() {
 
     // Category Form (Admin)
     document.getElementById('categoryForm').addEventListener('submit', handleAddCategory);
+
+    // Revoke Forms (Admin)
+    document.getElementById('revokeBySubmissionForm').addEventListener('submit', handleRevokeBySubmission);
+    document.getElementById('revokeCustomForm').addEventListener('submit', handleRevokeCustomAmount);
 }
 
 async function handleSubmitAchievement(e) {
@@ -626,10 +677,72 @@ window.cancelReject = function(submissionId) {
     if (inputDiv) inputDiv.remove();
 };
 
+// ===== REVOKE HANDLERS =====
+async function handleRevokeBySubmission(e) {
+    e.preventDefault();
+
+    if (!contract || !isOwner) {
+        showToast('Only admin can revoke rewards', 'error');
+        return;
+    }
+
+    const submissionId = document.getElementById('revokeSubmissionId').value;
+    const reason = document.getElementById('revokeReason').value;
+
+    try {
+        showLoading();
+
+        const tx = await contract.revokeReward(submissionId, reason);
+        await tx.wait();
+
+        showToast('Reward revoked successfully!', 'success');
+        e.target.reset();
+
+        // Refresh data
+        await loadAllData();
+
+    } catch (error) {
+        console.error('Revoke error:', error);
+        showToast('Failed to revoke: ' + getErrorMessage(error), 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function handleRevokeCustomAmount(e) {
+    e.preventDefault();
+
+    if (!contract || !isOwner) {
+        showToast('Only admin can revoke rewards', 'error');
+        return;
+    }
+
+    const teacherAddress = document.getElementById('revokeTeacherAddress').value;
+    const amount = document.getElementById('revokeCustomAmount').value;
+    const reason = document.getElementById('revokeCustomReason').value;
+
+    try {
+        showLoading();
+
+        const amountWei = ethers.utils.parseEther(amount);
+        const tx = await contract.revokeCustomAmount(teacherAddress, amountWei, reason);
+        await tx.wait();
+
+        showToast('Custom amount revoked successfully!', 'success');
+        e.target.reset();
+
+    } catch (error) {
+        console.error('Revoke custom error:', error);
+        showToast('Failed to revoke: ' + getErrorMessage(error), 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
 // ===== HELPER FUNCTIONS =====
 function createSubmissionCard(submission, showActions) {
-    const statusLabels = ['Pending', 'Approved', 'Rejected'];
-    const statusClasses = ['status-pending', 'status-approved', 'status-rejected'];
+    const statusLabels = ['Pending', 'Approved', 'Rejected', 'Revoked'];
+    const statusClasses = ['status-pending', 'status-approved', 'status-rejected', 'status-revoked'];
 
     const status = submission.status;
     const submittedDate = new Date(submission.submittedAt.toNumber() * 1000).toLocaleString();
@@ -650,8 +763,9 @@ function createSubmissionCard(submission, showActions) {
     }
 
     let rejectionHtml = '';
-    if (status === 2 && submission.rejectionReason) {
-        rejectionHtml = `<p><strong>Rejection Reason:</strong> ${submission.rejectionReason}</p>`;
+    if ((status === 2 || status === 3) && submission.rejectionReason) {
+        const label = status === 3 ? 'Revocation Reason' : 'Rejection Reason';
+        rejectionHtml = `<p><strong>${label}:</strong> ${submission.rejectionReason}</p>`;
     }
 
     return `

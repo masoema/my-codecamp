@@ -31,7 +31,7 @@
         <!-- Navigation Tabs -->
         <nav class="tabs">
             <button class="tab-btn active" data-tab="teacher">Teacher Panel</button>
-            <button class="tab-btn" data-tab="admin">Admin Panel</button>
+            <button class="tab-btn hidden" data-tab="admin" id="adminTab">Admin Panel</button>
             <button class="tab-btn" data-tab="history">My History</button>
         </nav>
 
@@ -103,8 +103,8 @@
             </div>
         </section>
 
-        <!-- Admin Panel -->
-        <section id="admin" class="tab-content">
+        <!-- Admin Panel (Owner Only) -->
+        <section id="admin" class="tab-content hidden" data-admin-only="true">
             <div class="panel">
                 <h2>Pending Submissions</h2>
                 <p class="panel-desc">Review and approve/reject teacher submissions</p>
@@ -188,6 +188,47 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">Add/Update Category</button>
+                </form>
+            </div>
+
+            <!-- Revoke Reward -->
+            <div class="panel panel-danger">
+                <h2>Revoke Reward</h2>
+                <p class="panel-desc">Revoke tokens from teacher (Predatory Journal, Wrong Achievement, etc.)</p>
+
+                <form id="revokeBySubmissionForm" class="form">
+                    <div class="form-group">
+                        <label for="revokeSubmissionId">Submission ID</label>
+                        <input type="number" id="revokeSubmissionId" placeholder="Enter submission ID" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="revokeReason">Reason for Revocation</label>
+                        <textarea id="revokeReason" rows="2" placeholder="e.g., Published in predatory journal, Fraudulent data..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger">Revoke by Submission ID</button>
+                </form>
+
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+                <form id="revokeCustomForm" class="form">
+                    <div class="form-group">
+                        <label for="revokeTeacherAddress">Teacher Wallet Address</label>
+                        <input type="text" id="revokeTeacherAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="revokeCustomAmount">Amount to Revoke (EDU)</label>
+                        <input type="number" id="revokeCustomAmount" placeholder="100" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="revokeCustomReason">Reason for Revocation</label>
+                        <textarea id="revokeCustomReason" rows="2" placeholder="e.g., Academic misconduct..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger">Revoke Custom Amount</button>
                 </form>
             </div>
         </section>

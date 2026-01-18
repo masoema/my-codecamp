@@ -24,7 +24,8 @@ contract AcademicReward is ERC20, Ownable {
     enum SubmissionStatus {
         Pending,    // Menunggu verifikasi
         Approved,   // Disetujui dan reward telah diberikan
-        Rejected    // Ditolak oleh admin
+        Rejected,   // Ditolak oleh admin
+        Revoked     // Dicabut setelah disetujui (misal: predatory journal)
     }
 
     // ===== STRUCTS =====
@@ -120,7 +121,16 @@ contract AcademicReward is ERC20, Ownable {
         string reason,                // Alasan penolakan
         uint256 timestamp             // Waktu rejection
     );
-    
+
+    // Event ketika reward dicabut/revoke
+    event RewardRevoked(
+        uint256 indexed submissionId, // ID submission yang dicabut
+        address indexed teacher,      // Alamat teacher
+        uint256 amount,               // Jumlah token yang dicabut
+        string reason,                // Alasan pencabutan (misal: predatory journal)
+        uint256 timestamp             // Waktu pencabutan
+    );
+
     // ===== CONSTRUCTOR =====
     
     /**
@@ -403,6 +413,105 @@ contract AcademicReward is ERC20, Ownable {
         emit SubmissionRejected(
             submissionId,
             submission.teacher,
+            reason,
+            block.timestamp
+        );
+    }
+
+    /**
+     * @dev Fungsi untuk admin mencabut/revoke reward yang sudah diberikan
+     * Digunakan jika ditemukan pelanggaran setelah approval (misal: predatory journal)
+     * Hanya owner (Admin Universitas) yang bisa memanggil
+     *
+     * @param submissionId ID submission yang rewardnya akan dicabut
+     * @param reason Alasan pencabutan (wajib diisi)
+     *
+     * CATATAN PENTING:
+     * - Hanya bisa revoke submission yang statusnya Approved
+     * - Token akan di-burn dari balance teacher
+     * - Jika teacher sudah transfer/spend tokennya, revoke akan gagal
+     * - Achievement history TIDAK dihapus (untuk audit trail)
+     */
+    function revokeReward(uint256 submissionId, string memory reason)
+        public
+        onlyOwner
+        nonReentrant
+    {
+        // CHECKS: Validasi submission
+        AchievementSubmission storage submission = submissions[submissionId];
+        require(submission.teacher != address(0), "Submission tidak ditemukan");
+        require(submission.status == SubmissionStatus.Approved, "Hanya submission yang approved bisa di-revoke");
+        require(bytes(reason).length > 0, "Alasan pencabutan harus diisi");
+
+        // Ambil jumlah reward yang akan dicabut
+        uint256 revokeAmount = rewardAmounts[submission.achievementType];
+        require(revokeAmount > 0, "Kategori reward tidak valid");
+
+        // Cek apakah teacher masih punya cukup token untuk di-burn
+        require(
+            balanceOf(submission.teacher) >= revokeAmount,
+            "Teacher tidak memiliki cukup token untuk dicabut"
+        );
+
+        // EFFECTS: Update status submission
+        submission.status = SubmissionStatus.Revoked;
+        submission.rejectionReason = reason;
+        submission.reviewedAt = block.timestamp;
+
+        // Burn token dari teacher (mengurangi balance dan total supply)
+        _burn(submission.teacher, revokeAmount);
+
+        // Update tracking data (kurangi total rewards received)
+        if (totalRewardsReceived[submission.teacher] >= revokeAmount) {
+            totalRewardsReceived[submission.teacher] -= revokeAmount;
+        }
+
+        // INTERACTIONS: Emit event
+        emit RewardRevoked(
+            submissionId,
+            submission.teacher,
+            revokeAmount,
+            reason,
+            block.timestamp
+        );
+    }
+
+    /**
+     * @dev Fungsi untuk admin mencabut token dengan jumlah custom
+     * Digunakan jika perlu mencabut jumlah berbeda dari reward standar
+     *
+     * @param teacher Alamat teacher yang tokennya akan dicabut
+     * @param amount Jumlah token yang akan dicabut
+     * @param reason Alasan pencabutan
+     */
+    function revokeCustomAmount(
+        address teacher,
+        uint256 amount,
+        string memory reason
+    )
+        public
+        onlyOwner
+        nonReentrant
+    {
+        // CHECKS: Validasi input
+        require(teacher != address(0), "Alamat tidak valid");
+        require(amount > 0, "Jumlah harus lebih dari 0");
+        require(bytes(reason).length > 0, "Alasan pencabutan harus diisi");
+        require(balanceOf(teacher) >= amount, "Teacher tidak memiliki cukup token");
+
+        // EFFECTS: Burn token dari teacher
+        _burn(teacher, amount);
+
+        // Update tracking data
+        if (totalRewardsReceived[teacher] >= amount) {
+            totalRewardsReceived[teacher] -= amount;
+        }
+
+        // INTERACTIONS: Emit event (gunakan submissionId = max uint untuk custom revoke)
+        emit RewardRevoked(
+            type(uint256).max, // Menandakan ini custom revoke, bukan dari submission
+            teacher,
+            amount,
             reason,
             block.timestamp
         );
