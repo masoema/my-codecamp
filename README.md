@@ -19,6 +19,11 @@ Solution:
 -	Each user could display/show their verified achievement by sharing the block key
 
 Future challenge :
--	Web3 Interface  interactive and helpful UI  “create a frontend for my smart contract. allow users to connect and interact with it using RainbowKit”
--	User whitelist  its imposible to put thousand record of whitelisted academician In single smartcontracts
--	Implementation Polkadot special function smartcontract ? 
+-	Web3 Interface --> interactive and more helpful UI 
+-	User whitelist --> its imposible to put thousand record of whitelisted academician In single smartcontracts
+-	Implementation Polkadot special function in smartcontract ??
+
+Future Additional Security Features:
+- Teacher Whitelist - only teacher registered teacher/lecture can submit
+- Max Supply Cap 
+- Pausable
