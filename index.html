@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Reward - EduCoin dApp</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>Academic Reward</h1>
+                <span class="token-badge">EduCoin (EDU)</span>
+            </div>
+            <div class="wallet-section">
+                <button id="connectWallet" class="btn btn-primary">Connect Wallet</button>
+                <div id="walletInfo" class="wallet-info hidden">
+                    <span id="walletAddress"></span>
+                    <span id="walletBalance"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Role Indicator -->
+        <div id="roleIndicator" class="role-indicator hidden">
+            <span id="userRole"></span>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="teacher">Teacher Panel</button>
+            <button class="tab-btn" data-tab="admin">Admin Panel</button>
+            <button class="tab-btn" data-tab="history">My History</button>
+        </nav>
+
+        <!-- Teacher Panel -->
+        <section id="teacher" class="tab-content active">
+            <div class="panel">
+                <h2>Submit Achievement</h2>
+                <p class="panel-desc">Submit your achievement with proof for verification</p>
+
+                <form id="submitAchievementForm" class="form">
+                    <div class="form-group">
+                        <label for="achievementType">Achievement Type</label>
+                        <select id="achievementType" required>
+                            <option value="">-- Select Category --</option>
+                            <option value="Published Paper">Published Paper (100 EDU)</option>
+                            <option value="Taught Semester">Taught Semester (50 EDU)</option>
+                            <option value="Conference Speaker">Conference Speaker (75 EDU)</option>
+                            <option value="Research Grant">Research Grant (200 EDU)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="3" placeholder="Describe your achievement..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proofLink">Proof Link (Google Drive / Dropbox)</label>
+                        <input type="url" id="proofLink" placeholder="https://drive.google.com/..." required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Submit Achievement</button>
+                </form>
+            </div>
+
+            <!-- My Submissions -->
+            <div class="panel">
+                <h2>My Submissions</h2>
+                <button id="refreshMySubmissions" class="btn btn-secondary btn-sm">Refresh</button>
+                <div id="mySubmissionsList" class="submissions-list">
+                    <p class="empty-state">Connect wallet to see your submissions</p>
+                </div>
+            </div>
+
+            <!-- Redeem Tokens -->
+            <div class="panel">
+                <h2>Redeem Tokens</h2>
+                <p class="panel-desc">Exchange your tokens for benefits</p>
+
+                <form id="redeemForm" class="form">
+                    <div class="form-group">
+                        <label for="redeemAmount">Amount (EDU)</label>
+                        <input type="number" id="redeemAmount" placeholder="100" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="benefit">Benefit</label>
+                        <select id="benefit" required>
+                            <option value="">-- Select Benefit --</option>
+                            <option value="Conference Ticket">Conference Ticket</option>
+                            <option value="Research Funding">Research Funding</option>
+                            <option value="Equipment Purchase">Equipment Purchase</option>
+                            <option value="Travel Grant">Travel Grant</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning">Redeem Tokens</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Admin Panel -->
+        <section id="admin" class="tab-content">
+            <div class="panel">
+                <h2>Pending Submissions</h2>
+                <p class="panel-desc">Review and approve/reject teacher submissions</p>
+                <button id="refreshPending" class="btn btn-secondary btn-sm">Refresh</button>
+
+                <div id="pendingCount" class="stat-box">
+                    <span class="stat-label">Pending Reviews:</span>
+                    <span id="pendingNumber" class="stat-value">0</span>
+                </div>
+
+                <div id="pendingSubmissionsList" class="submissions-list">
+                    <p class="empty-state">No pending submissions</p>
+                </div>
+            </div>
+
+            <!-- Direct Reward -->
+            <div class="panel">
+                <h2>Issue Direct Reward</h2>
+                <p class="panel-desc">Give reward directly without submission (Admin Only)</p>
+
+                <form id="directRewardForm" class="form">
+                    <div class="form-group">
+                        <label for="teacherAddress">Teacher Wallet Address</label>
+                        <input type="text" id="teacherAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="directAchievementType">Achievement Type</label>
+                        <select id="directAchievementType" required>
+                            <option value="">-- Select Category --</option>
+                            <option value="Published Paper">Published Paper (100 EDU)</option>
+                            <option value="Taught Semester">Taught Semester (50 EDU)</option>
+                            <option value="Conference Speaker">Conference Speaker (75 EDU)</option>
+                            <option value="Research Grant">Research Grant (200 EDU)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Issue Reward</button>
+                </form>
+            </div>
+
+            <!-- Custom Reward -->
+            <div class="panel">
+                <h2>Issue Custom Reward</h2>
+                <p class="panel-desc">Give custom amount reward (Admin Only)</p>
+
+                <form id="customRewardForm" class="form">
+                    <div class="form-group">
+                        <label for="customTeacherAddress">Teacher Wallet Address</label>
+                        <input type="text" id="customTeacherAddress" placeholder="0x..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customAmount">Amount (EDU)</label>
+                        <input type="number" id="customAmount" placeholder="100" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customDescription">Description</label>
+                        <input type="text" id="customDescription" placeholder="Special achievement..." required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Issue Custom Reward</button>
+                </form>
+            </div>
+
+            <!-- Add Category -->
+            <div class="panel">
+                <h2>Manage Reward Categories</h2>
+                <p class="panel-desc">Add or update reward categories (Admin Only)</p>
+
+                <form id="categoryForm" class="form">
+                    <div class="form-group">
+                        <label for="categoryName">Category Name</label>
+                        <input type="text" id="categoryName" placeholder="Best Teacher Award" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="categoryAmount">Reward Amount (EDU)</label>
+                        <input type="number" id="categoryAmount" placeholder="150" min="1" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Add/Update Category</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- History Panel -->
+        <section id="history" class="tab-content">
+            <div class="panel">
+                <h2>My Achievement History</h2>
+                <button id="refreshHistory" class="btn btn-secondary btn-sm">Refresh</button>
+
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-label">Total Rewards Received</span>
+                        <span id="totalRewards" class="stat-value">0 EDU</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Current Balance</span>
+                        <span id="currentBalance" class="stat-value">0 EDU</span>
+                    </div>
+                </div>
+
+                <div id="achievementHistoryList" class="history-list">
+                    <p class="empty-state">Connect wallet to see your history</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden">
+            <span id="toastMessage"></span>
+        </div>
+
+     <!--   Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Processing transaction...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
