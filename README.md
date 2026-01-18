@@ -1,3 +1,7 @@
+Update 0.1
+- menghapus/revoke reward token dari teacher jika terjadi kesalahan atau pelanggaran.
+- fitur untuk membatasi akses Admin Panel hanya untuk owner, dan membuat Teacher hanya bisa melihat submission mereka sendiri.
+
 Educoin
 Academicians Merit Smartcontract
 
